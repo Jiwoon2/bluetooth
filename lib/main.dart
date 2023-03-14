@@ -1,4 +1,6 @@
+
 import 'package:bluetooth/screens/home_screen.dart';
+import 'package:bluetooth/screens/map_screen.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -14,6 +16,9 @@ class App extends StatelessWidget {
 
     return MaterialApp(
       home: HomeScreen(),
+     // home: BaseMapPage(),
+
+
     );
   }
 

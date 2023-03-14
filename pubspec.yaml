@@ -31,6 +31,9 @@ dependencies:
 
   location_permissions: ^4.0.0
   permission_handler: ^10.2.0
+  geolocator: ^9.0.2
+  flutter_naver_map: ^0.10.7
+  http: ^0.13.5
 
   flutter:
     sdk: flutter

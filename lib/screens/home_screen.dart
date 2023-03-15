@@ -4,6 +4,8 @@ import 'dart:convert';
 
 import 'dart:io';
 
+import 'package:bluetooth/model/ReverseGC.dart';
+import 'package:bluetooth/screens/map_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'package:geolocator/geolocator.dart';
@@ -27,6 +29,9 @@ class _HomeScreenState extends State<HomeScreen> {
   late StreamSubscription? subscription; //검색 중지를 위한 변수
 
   final nameList = <String>{}; // LinkedHashSet 중복불가 순서있음. 블루투스 연결 가능 목록.
+  late double lat, lon; //위도, 경도
+  late Future<String> position; //현재 위치
+  bool isMap = false;
 
   //BLE 디바이스의 Service UUID , characteristicId를 사용해서 응답값을 읽어오는 부분
   // final characteristic = QualifiedCharacteristic(serviceId: serviceUuid, characteristicId: characteristicUuid, deviceId: foundDeviceId);
@@ -59,6 +64,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void startScan() {
+    setState(() {
+      isMap= false;
+    });
+
     requestGranted();
     //subscription= flutterReactiveBle as StreamSubscription?;
 
@@ -131,16 +140,13 @@ class _HomeScreenState extends State<HomeScreen> {
   // }
 
   //Future<Position>
-  Future<Position> _determinePosition() async {
+  Future<String> _determinePosition() async {
     bool serviceEnabled;
     LocationPermission permission; //여기서 권한체크를 따로 해줘야되나??
 
     // Test if location services are enabled.
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      // Location services are not enabled don't continue
-      // accessing the position and request users of the
-      // App to enable the location services.
       return Future.error('Location services are disabled.');
     }
 
@@ -158,12 +164,12 @@ class _HomeScreenState extends State<HomeScreen> {
       desiredAccuracy: LocationAccuracy.high,
     );
 
-    //위도, 경도 출력
+    //위도, 경도 출력 37.5608604 126.8293889
     print("holeeee ${position.latitude.toString()}");
     print("holeeee ${position.longitude.toString()}");
 
-    var lat = position.latitude.toString();
-    var lon = position.longitude.toString();
+    lat = position.latitude;
+    lon = position.longitude;
 
     Map<String, String> myHeaders = {
       "X-NCP-APIGW-API-KEY-ID": "di37sadm10",
@@ -172,28 +178,44 @@ class _HomeScreenState extends State<HomeScreen> {
       // 개인 시크릿 키
     };
 
-    //128.2439084,36.4938906
     Response response = await get(
-      Uri.parse(
-          "https://naveropenapi.apigw.ntruss.com/map-reversegeocode/v2/gc?request=coordsToaddr&coords=${lon},${lat}&sourcecrs=epsg:4326&orders=admcode,legalcode,addr,roadaddr&output=json"),
+      Uri.parse(//admcode,legalcode,addr,
+          "https://naveropenapi.apigw.ntruss.com/map-reversegeocode/v2/gc?request=coordsToaddr&coords=${lon},${lat}&sourcecrs=epsg:4326&orders=roadaddr&output=json"),
       headers: myHeaders,
     );
     print("holeeee ${response.body}");
-    var si= jsonDecode(response.body)["results"][1]['region']['area1']['name']; //서울특별시
-    var gu= jsonDecode(response.body)["results"][1]['region']['area2']['name']; //강서구
+    final gc = jsonDecode(response.body);
+    //gc 확인하기
+    //print("holeee3 ${gc["results"][1]['region']['area1']['name']}"); //잘나옴
 
-    print("holeeee ${si}");
-    print("holeeee ${gu}");
-    return position;
-    // return await Geolocator.getCurrentPosition(
-    //   desiredAccuracy: LocationAccuracy.high,
-    // );
+    final gcModel = ReverseGC.fromJson(gc); //모델 생성자 전달
+    print(
+        "holeeee  ${gcModel.si} ${gcModel.gu} ${gcModel.dong} ${gcModel.road} ${gcModel.buildingName} "); //서울특별시 강서구 마곡동 마곡중앙6로 이너매스마곡Ⅰ
+
+    String address;
+    address =
+        "${gcModel.si} ${gcModel.gu} ${gcModel.dong} ${gcModel.road} ${gcModel.buildingName}";
+    print("holeee ${address}");
+    return address;
   }
+
+  //출력 json
+  // {"status":{"code":0,"name":"ok","message":"done"},"results":[{"name":"roadaddr","code":{"id":"1150010500","type":"L","mappingId":"09500105"},
+  // "region":{"area0":{"name":"kr","coords":{"center":{"crs":"","x":0.0,"y":0.0}}},
+  // "area1":{"name":"서울특별시","coords":{"center":{"crs":"EPSG:4326","x":126.9783882,"y":37.5666103}},"alias":"서울"},
+  // "area2":{"name":"강서구","coords":{"center":{"crs":"EPSG:4326","x":126.849642,"y":37.550937}}},
+  // "area3":{"name":"마곡동","coords":{"center":{"crs":"EPSG:4326","x":126.8304,"y":37.5738}}},
+  // "area4":{"name":"","coords":{"center":{"crs":"","x":0.0,"y":0.0}}}},
+  // "land":{"type":"","number1":"21","number2":"","addition0":{"type":"building","value":"이너매스마곡Ⅰ"},
+  // "addition1":{"type":"zipcode","value":"07801"},"addition2":{"type":"roadGroupCode","value":"115003155054"},"addition3":{"type":"","value":""},
+  // "addition4":{"type":"","value":""},
+  // "name":"마곡중앙6로","coords":{"center":{"crs":"","x":0.0,"y":0.0}}}}]}
 
   @override
   void initState() {
     super.initState();
-    Future<Position> position = _determinePosition();
+    //Future<Position> position = _determinePosition();
+    position = _determinePosition();
     print("holeee000e ${position}");
   }
 
@@ -203,31 +225,69 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(),
       body: Column(
         children: [
-          //현재 위치 맵에 찍히도록
-          Text("jjj"),
-
-          GestureDetector(
-            onTap: startScan,
-            child: Container(
-              height: 100,
-              width: 100,
-              decoration: BoxDecoration(
-                color: Colors.green,
+          //현재 위치
+          FutureBuilder(
+            future: position,
+            builder: (context, snapshot) {
+              if (snapshot.hasData) {
+                return Text(snapshot.data.toString());
+              }
+              return Text("no location");
+            },
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              GestureDetector(
+                onTap: startScan,
+                child: Container(
+                  height: 100,
+                  width: 100,
+                  decoration: BoxDecoration(
+                    color: Colors.green,
+                  ),
+                ),
               ),
-            ),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => NaverMapTest(
+                        lat: lat,
+                        lon: lon,
+                      ),
+                    ),
+                  );
+                  setState(() {
+                    isMap= true;
+                  });
+                },
+                child: Container(
+                  height: 100,
+                  width: 100,
+                  decoration: BoxDecoration(
+                    color: Colors.blue,
+                  ),
+                ),
+              ),
+            ],
           ),
           //리스트
           Expanded(
-            child: ListView.separated(
-              scrollDirection: Axis.vertical,
-              itemCount: nameList.length,
-              itemBuilder: (BuildContext context, int index) {
-                return Text(nameList.elementAt(index)); //리턴을 해야 보인다
-              },
-              separatorBuilder: (BuildContext context, int index) => SizedBox(
-                height: 20,
-              ),
-            ),
+              child: isMap //블루투스 버튼일때 목록, 맵버튼일때 맵보여주기
+                  ? NaverMapTest(lat: lat, lon: lon)
+                  : ListView.separated(
+                      scrollDirection: Axis.vertical,
+                      itemCount: nameList.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        return Text(nameList.elementAt(index)); //리턴을 해야 보인다
+                      },
+                      separatorBuilder: (BuildContext context, int index) =>
+                          SizedBox(
+                        height: 20,
+                      ),
+                    ),
           ),
         ],
       ),

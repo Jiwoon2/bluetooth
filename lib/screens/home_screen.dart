@@ -142,7 +142,7 @@ class _HomeScreenState extends State<HomeScreen> {
   //Future<Position>
   Future<String> _determinePosition() async {
     bool serviceEnabled;
-    LocationPermission permission; //여기서 권한체크를 따로 해줘야되나??
+    LocationPermission permission; //여기서 위치 권한체크를 따로 해주기
 
     // Test if location services are enabled.
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -172,9 +172,9 @@ class _HomeScreenState extends State<HomeScreen> {
     lon = position.longitude;
 
     Map<String, String> myHeaders = {
-      "X-NCP-APIGW-API-KEY-ID": "di37sadm10",
+      "X-NCP-APIGW-API-KEY-ID": "입력",
       // 개인 클라이언트 아이디
-      "X-NCP-APIGW-API-KEY": "jzp60gFrWh8gnFk0OZhEdrjMj2LptXLVMBaVW3Ir"
+      "X-NCP-APIGW-API-KEY": "입력"
       // 개인 시크릿 키
     };
 

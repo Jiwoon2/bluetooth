@@ -66,6 +66,6 @@
             android:value="2" />
         <meta-data
             android:name="com.naver.maps.map.CLIENT_ID"
-            android:value="di37sadm10" />
+            android:value="입력" />
     </application>
 </manifest>
